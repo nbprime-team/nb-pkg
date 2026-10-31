@@ -35,11 +35,16 @@ python3 -m nb_pkg hash    ../nb-package-index --write  # 生成 hashes.txt（发
 ```bash
 python3 -m nb_pkg device                        # 列出检测到的计算器盘
 python3 -m nb_pkg status ../nb-package-index    # 对比设备与索引（新增/升级/已最新）
-python3 -m nb_pkg deploy ../nb-package-index    # 安装/升级（--dry-run 只看计划）
+python3 -m nb_pkg deploy ../nb-package-index            # 交互选择要装的包
+python3 -m nb_pkg deploy ../nb-package-index hello lua  # 只装指定包
+python3 -m nb_pkg deploy ../nb-package-index --all      # 全部
+python3 -m nb_pkg deploy ../nb-package-index --dry-run  # 只看计划
 ```
 
 - 自动探测 Windows 盘符、macOS `/Volumes`、Linux `/media|/run/media|/mnt`，以 `DATA/` 目录识别；
 - 先构建到 `DATA/.nb-pkg-staging`，再合并进 `sys/`、入口、`pkg/`，完成后清理；
+- **默认不装任何包**：不带参数会列出包并让你选（回车取消），
+  列表会标出“可显示 / 仅工具”；`--bundles` 生成自包含 `.hpappdir`；
 - 只触碰索引里声明过的名字；`--keep-old` 保留旧版本目录，`--no-legacy` 不写兼容 `pkg/`；
 - 入口里的设备路径固定为 `C:\DATA\...`，与盘符无关。
 
