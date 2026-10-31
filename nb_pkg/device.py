@@ -122,12 +122,34 @@ def _rm(path):
         os.remove(path)
 
 
+def _selected(index, only, all_):
+    pkgs = manifest.load_all(index)
+    if all_:
+        return pkgs
+    only = set(only or [])
+    return [m for m in pkgs if m.name in only]
+
+
 def deploy(index, device, dry_run=False, keep_old=False,
-           with_legacy=True, with_entries=True, flat=False, bundles=False):
+           with_legacy=True, with_entries=True, flat=False, bundles=False,
+           only=None, all_=False):
     """构建到设备上的暂存目录，再合并进 DATA/。返回摘要 dict。"""
+    sel = _selected(index, only, all_)
+    if not sel:
+        raise SystemExit("没有选择任何包（用 --all 或指定包名）")
+    names = {m.name for m in sel}
     st = status(device)
     data = st["data"]
-    new, up, same = plan(index, st["installed"])
+    installed = st["installed"]
+    new, up, same = [], [], []
+    for m in sel:
+        key = (m.name, m.version)
+        if key in installed:
+            same.append(m)
+        elif any(n == m.name for (n, _v) in installed):
+            up.append(m)
+        else:
+            new.append(m)
     summary = {"new": [m.name for m in new], "upgrade": [m.name for m in up],
                "same": [m.name for m in same], "installed": 0,
                "warnings": []}
@@ -142,7 +164,7 @@ def deploy(index, device, dry_run=False, keep_old=False,
         if bundles:
             n = 0
             errs = []
-            for m in manifest.load_all(index):
+            for m in sel:
                 if m.kind not in ("app", "tool", "pyapp"):
                     continue
                 if not m.payload_path() and not m.get("payload_url"):
@@ -158,29 +180,29 @@ def deploy(index, device, dry_run=False, keep_old=False,
             summary["installed"] = n
             return summary
         if flat:
-            n = artifacts.sys_flat(index, os.path.join(staging, "sys"))
+            n = artifacts.sys_flat(index, os.path.join(staging, "sys"), only=names)
             errs = []
             # 扁平模式：先清掉旧的 bin/lib 目录，避免残留嵌套
             for kind in ("bin", "lib"):
                 _rm(os.path.join(_dir_ci(data, "sys") or os.path.join(data, "sys"), kind))
         else:
-            n, errs = artifacts.sys_tree(index, os.path.join(staging, "sys"))
+            n, errs = artifacts.sys_tree(index, os.path.join(staging, "sys"), only=names)
         summary["warnings"] += errs
         if with_entries:
-            for m in manifest.load_all(index):
+            for m in sel:
                 if m.kind in ("app", "tool", "pyapp"):
                     if not m.payload_path() and not m.get("payload_url"):
                         continue
                     artifacts.entry(m, os.path.join(
                         staging, "entries", "%s.hpappdir" % m.name), flat=flat)
         if with_legacy:
-            artifacts.legacy_tree(index, os.path.join(staging, "pkg"))
+            artifacts.legacy_tree(index, os.path.join(staging, "pkg"), only=names)
 
         sysdir = _dir_ci(data, "sys") or os.path.join(data, "sys")
         os.makedirs(sysdir, exist_ok=True)
 
         # 2) 旧版本处理：先移除同名旧版本目录（可选保留）
-        for m in manifest.load_all(index):
+        for m in sel:
             for kind in ("bin", "lib"):
                 base = os.path.join(sysdir, kind)
                 if not os.path.isdir(base):

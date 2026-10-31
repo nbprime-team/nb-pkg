@@ -162,15 +162,45 @@ def cmd_status(args):
     return 0
 
 
+def _user_facing(m):
+    """有 HP 元数据（或 pyapp）的包才值得生成用户入口。"""
+    if m.kind == "pyapp":
+        return True
+    root = m.payload_root()
+    try:
+        return any(n.endswith((".hpapp", ".hpappdir")) for n in os.listdir(root))
+    except OSError:
+        return False
+
+
 def cmd_deploy(args):
     from . import device
+    names = list(args.names)
+    if not names and not args.all:
+        pkgs = manifest.load_all(args.index)
+        print("可用包：")
+        for i, m in enumerate(pkgs, 1):
+            mark = "  可显示" if _user_facing(m) else "  仅工具"
+            print("  %2d) %-16s %-5s %-6s%s" % (i, m.name, m.version, m.kind, mark))
+        line = input("要安装哪些？编号如 1,3；all=全部；回车=取消: ").strip()
+        if not line:
+            print("已取消")
+            return 0
+        if line.lower() in ("all", "*"):
+            args.all = True
+        else:
+            names = [pkgs[int(x) - 1].name for x in line.replace(" ", "").split(",")
+                     if x.isdigit() and 1 <= int(x) <= len(pkgs)]
     dev = device.find(args.device)
     if not dev:
         print("找不到设备（用 --device 指定盘根）")
         return 2
     if args.dry_run:
         st = device.status(dev)
-        new, up, same = device.plan(args.index, st["installed"])
+        sel = set(names) if not args.all else None
+        installed = {k: v for k, v in st["installed"].items()
+                     if sel is None or k[0] in sel}
+        new, up, same = device.plan(args.index, installed)
         print("dry-run:", st["root"])
         for m in new:
             print("  新增", m.name, m.version)
@@ -181,7 +211,7 @@ def cmd_deploy(args):
         return 0
     r = device.deploy(args.index, dev, keep_old=args.keep_old,
                       with_legacy=not args.no_legacy, flat=args.flat,
-                      bundles=args.bundles)
+                      bundles=args.bundles, only=names, all_=args.all)
     print("部署完成：新增 %d，升级 %d，已最新 %d"
           % (len(r["new"]), len(r["upgrade"]), len(r["same"])))
     for w in r["warnings"]:
@@ -287,6 +317,8 @@ def build_parser():
 
     dp = sub.add_parser("deploy", help="安装/升级到计算器盘")
     dp.add_argument("index")
+    dp.add_argument("names", nargs="*", help="要安装的包名（不写则交互选择）")
+    dp.add_argument("--all", action="store_true")
     dp.add_argument("--device")
     dp.add_argument("--dry-run", action="store_true")
     dp.add_argument("--keep-old", action="store_true")

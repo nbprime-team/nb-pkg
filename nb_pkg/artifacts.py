@@ -80,7 +80,7 @@ def sys_tree(index, dest, device_sys="C:\\DATA\\sys", only=None):
     return n, errs
 
 
-def sys_flat(index, dest):
+def sys_flat(index, dest, only=None):
     r"""扁平核心区：sys/bin/<name>.elf、sys/lib/<name>.elf，不建版本子目录。
 
     规避固件对多层目录/带点目录名的不友好（DATA\sys\bin\hello-0.1\ 打不开）。
@@ -88,6 +88,8 @@ def sys_flat(index, dest):
     from . import manifest
     n = 0
     for m in manifest.load_all(index):
+        if only is not None and m.name not in only:
+            continue
         if m.kind == "pyapp":
             continue
         rel = m.rel_entry()
@@ -106,11 +108,13 @@ def sys_flat(index, dest):
     return n
 
 
-def legacy_tree(index, dest):
+def legacy_tree(index, dest, only=None):
     r"""兼容布局：C:\DATA\pkg\<name>-<ver>\（当前 sh 的扫描方式）。"""
     from . import manifest
     n = 0
     for m in manifest.load_all(index):
+        if only is not None and m.name not in only:
+            continue
         copy_payload(m, os.path.join(dest, "%s-%s" % (m.name, m.version)))
         shutil.copy2(os.path.join(m.dir, "pkg.cfg"),
                      os.path.join(dest, "%s-%s" % (m.name, m.version), "pkg.cfg"))
