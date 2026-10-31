@@ -28,6 +28,21 @@ python3 -m nb_pkg hash    ../nb-package-index --write  # 生成 hashes.txt（发
 生成的路径默认是设备视角（`C:\DATA\sys`、`C:\DATA\<name>.hpappdir`），
 用 `--device-sys` / `--device-root` 可改。
 
+## 设备部署（U 盘模式）
+
+计算器以 U 盘模式连接后，盘根对应设备 `C:\`，包写入 `<盘>/DATA/`：
+
+```bash
+python3 -m nb_pkg device                        # 列出检测到的计算器盘
+python3 -m nb_pkg status ../nb-package-index    # 对比设备与索引（新增/升级/已最新）
+python3 -m nb_pkg deploy ../nb-package-index    # 安装/升级（--dry-run 只看计划）
+```
+
+- 自动探测 Windows 盘符、macOS `/Volumes`、Linux `/media|/run/media|/mnt`，以 `DATA/` 目录识别；
+- 先构建到 `DATA/.nb-pkg-staging`，再合并进 `sys/`、入口、`pkg/`，完成后清理；
+- 只触碰索引里声明过的名字；`--keep-old` 保留旧版本目录，`--no-legacy` 不写兼容 `pkg/`；
+- 入口里的设备路径固定为 `C:\DATA\...`，与盘符无关。
+
 ## 校验规则（`verify`）
 
 - 必填：`name`（小写/数字/-）、`version`（MAJ.MIN）、`kind`（app/tool/lib/pyapp）；

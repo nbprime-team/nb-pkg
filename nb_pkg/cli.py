@@ -121,6 +121,67 @@ def cmd_install(args):
     return 1 if errs else 0
 
 
+def cmd_device(args):
+    from . import device
+    found = 0
+    for r in device.roots():
+        if not device._dir_ci(r, device.MARKER):
+            continue
+        found += 1
+        dev = device.find(r)
+        st = device.status(dev)
+        print("%s  free=%.1f MB  installed=%d  entries=%d"
+              % (r, st["free"] / 1e6, len(st["installed"]), len(st["entries"])))
+    if not found:
+        print("没有发现计算器盘（U 盘模式下应出现含 DATA/ 的卷）")
+        return 1
+    return 0
+
+
+def cmd_status(args):
+    from . import device
+    dev = device.find(args.device)
+    if not dev:
+        print("找不到设备（用 --device 指定盘根）")
+        return 2
+    st = device.status(dev)
+    new, up, same = device.plan(args.index, st["installed"])
+    print("device:", st["root"], " free=%.1f MB" % (st["free"] / 1e6))
+    for m in new:
+        print("  +", m.name, m.version)
+    for m in up:
+        print("  ^", m.name, m.version)
+    for m in same:
+        print("  =", m.name, m.version)
+    return 0
+
+
+def cmd_deploy(args):
+    from . import device
+    dev = device.find(args.device)
+    if not dev:
+        print("找不到设备（用 --device 指定盘根）")
+        return 2
+    if args.dry_run:
+        st = device.status(dev)
+        new, up, same = device.plan(args.index, st["installed"])
+        print("dry-run:", st["root"])
+        for m in new:
+            print("  新增", m.name, m.version)
+        for m in up:
+            print("  升级", m.name, m.version)
+        for m in same:
+            print("  已最新", m.name, m.version)
+        return 0
+    r = device.deploy(args.index, dev, keep_old=args.keep_old,
+                      with_legacy=not args.no_legacy)
+    print("部署完成：新增 %d，升级 %d，已最新 %d"
+          % (len(r["new"]), len(r["upgrade"]), len(r["same"])))
+    for w in r["warnings"]:
+        print("WARN", w)
+    return 0
+
+
 def cmd_hash(args):
     """为每个包生成/打印 hashes.txt（发布前跑一次，CI 会强制校验）。"""
     from . import artifacts
@@ -205,6 +266,22 @@ def build_parser():
     i.add_argument("--device-sys", default=DEV_SYS)
     i.add_argument("--layout", choices=("sys", "legacy"), default="sys")
     i.set_defaults(func=cmd_install)
+
+    d = sub.add_parser("device", help="列出已连接的计算器盘")
+    d.set_defaults(func=cmd_device)
+
+    st = sub.add_parser("status", help="对比设备与索引")
+    st.add_argument("index")
+    st.add_argument("--device")
+    st.set_defaults(func=cmd_status)
+
+    dp = sub.add_parser("deploy", help="安装/升级到计算器盘")
+    dp.add_argument("index")
+    dp.add_argument("--device")
+    dp.add_argument("--dry-run", action="store_true")
+    dp.add_argument("--keep-old", action="store_true")
+    dp.add_argument("--no-legacy", action="store_true")
+    dp.set_defaults(func=cmd_deploy)
 
     h = sub.add_parser("hash", help="生成/打印 hashes.txt")
     h.add_argument("index")
