@@ -80,8 +80,32 @@ def sys_tree(index, dest, device_sys="C:\\DATA\\sys", only=None):
     return n, errs
 
 
+def sys_flat(index, dest):
+    r"""扁平核心区：sys/bin/<name>.elf、sys/lib/<name>.elf，不建版本子目录。
+
+    规避固件对多层目录/带点目录名的不友好（DATA\sys\bin\hello-0.1\ 打不开）。
+    """
+    from . import manifest
+    n = 0
+    for m in manifest.load_all(index):
+        rel = m.rel_entry()
+        if not rel:
+            continue
+        src = os.path.join(m.payload_root(), rel.replace("/", os.sep))
+        if not os.path.isfile(src):
+            continue
+        kind = "lib" if m.kind == "lib" else "bin"
+        os.makedirs(dest, exist_ok=True)
+        base = os.path.basename(rel)
+        shutil.copy2(src, os.path.join(dest, base))
+        with open(os.path.join(dest, "core.db"), "a", encoding="utf-8") as f:
+            f.write("%s %s %s %s\n" % (m.name, m.version, kind, base))
+        n += 1
+    return n
+
+
 def legacy_tree(index, dest):
-    """兼容布局：C:\DATA\pkg\<name>-<ver>\（当前 sh 的扫描方式）。"""
+    r"""兼容布局：C:\DATA\pkg\<name>-<ver>\（当前 sh 的扫描方式）。"""
     from . import manifest
     n = 0
     for m in manifest.load_all(index):
@@ -92,7 +116,7 @@ def legacy_tree(index, dest):
     return n
 
 
-def entry(m, dest, device_sys="C:\\DATA\\sys"):
+def entry(m, dest, device_sys="C:\\DATA\\sys", flat=False):
     os.makedirs(dest, exist_ok=True)
     for n in _meta_names(m):
         s = os.path.join(m.payload_root(), n)
@@ -100,8 +124,11 @@ def entry(m, dest, device_sys="C:\\DATA\\sys"):
             shutil.copy2(s, os.path.join(dest, n))
     if m.kind in ("app", "tool"):
         sub = "lib" if m.kind == "lib" else "bin"
-        app_dir = "%s\\%s\\%s-%s" % (device_sys, sub, m.name, m.version)
         rel_elf = (m.rel_entry() or m.entry).replace("/", "\\")
+        app_dir = device_sys if flat else \
+            ("%s\\%s\\%s-%s" % (device_sys, sub, m.name, m.version))
+        if flat:
+            rel_elf = rel_elf.split("\\")[-1]
         with open(os.path.join(dest, "main.py"), "w", encoding="utf-8") as f:
             f.write(_make_main(m, app_dir, rel_elf))
     elif m.kind == "pyapp":

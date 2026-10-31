@@ -123,7 +123,7 @@ def _rm(path):
 
 
 def deploy(index, device, dry_run=False, keep_old=False,
-           with_legacy=True, with_entries=True):
+           with_legacy=True, with_entries=True, flat=False):
     """构建到设备上的暂存目录，再合并进 DATA/。返回摘要 dict。"""
     st = status(device)
     data = st["data"]
@@ -139,7 +139,14 @@ def deploy(index, device, dry_run=False, keep_old=False,
     os.makedirs(staging)
     try:
         # 1) 生成核心区与入口
-        n, errs = artifacts.sys_tree(index, os.path.join(staging, "sys"))
+        if flat:
+            n = artifacts.sys_flat(index, os.path.join(staging, "sys"))
+            errs = []
+            # 扁平模式：先清掉旧的 bin/lib 目录，避免残留嵌套
+            for kind in ("bin", "lib"):
+                _rm(os.path.join(_dir_ci(data, "sys") or os.path.join(data, "sys"), kind))
+        else:
+            n, errs = artifacts.sys_tree(index, os.path.join(staging, "sys"))
         summary["warnings"] += errs
         if with_entries:
             for m in manifest.load_all(index):
@@ -147,7 +154,7 @@ def deploy(index, device, dry_run=False, keep_old=False,
                     if not m.payload_path() and not m.get("payload_url"):
                         continue
                     artifacts.entry(m, os.path.join(
-                        staging, "entries", "%s.hpappdir" % m.name))
+                        staging, "entries", "%s.hpappdir" % m.name), flat=flat)
         if with_legacy:
             artifacts.legacy_tree(index, os.path.join(staging, "pkg"))
 

@@ -66,7 +66,10 @@ def cmd_list(args):
 
 
 def cmd_sys(args):
-    n, errs = artifacts.sys_tree(args.index, args.dest, args.device_sys)
+    if args.flat:
+        n, errs = artifacts.sys_flat(args.index, args.dest), []
+    else:
+        n, errs = artifacts.sys_tree(args.index, args.dest, args.device_sys)
     for e in errs:
         print("ERROR", e)
     print("installed %d package(s) -> %s" % (n, args.dest))
@@ -82,7 +85,7 @@ def cmd_entry(args):
     if e:
         print("\n".join(e))
         return 1
-    artifacts.entry(m, args.dest, args.device_sys)
+    artifacts.entry(m, args.dest, args.device_sys, flat=args.flat)
     print("entry ->", args.dest)
     return 0
 
@@ -106,14 +109,17 @@ def cmd_install(args):
         n = artifacts.legacy_tree(args.index, os.path.join(args.dest, "pkg"))
         print("install(legacy): %d package(s) -> %s/pkg" % (n, args.dest))
         return 0
-    n, errs = artifacts.sys_tree(args.index, os.path.join(args.dest, "sys"),
-                                 args.device_sys)
+    if args.flat:
+        n, errs = artifacts.sys_flat(args.index, os.path.join(args.dest, "sys")), []
+    else:
+        n, errs = artifacts.sys_tree(args.index, os.path.join(args.dest, "sys"),
+                                     args.device_sys)
     made = 0
     for m in manifest.load_all(args.index):
         if m.kind not in ("app", "tool"):
             continue
         d = os.path.join(args.dest, "entries", "%s.hpappdir" % m.name)
-        artifacts.entry(m, d, args.device_sys)
+        artifacts.entry(m, d, args.device_sys, flat=args.flat)
         made += 1
     for e in errs:
         print("ERROR", e)
@@ -174,7 +180,7 @@ def cmd_deploy(args):
             print("  已最新", m.name, m.version)
         return 0
     r = device.deploy(args.index, dev, keep_old=args.keep_old,
-                      with_legacy=not args.no_legacy)
+                      with_legacy=not args.no_legacy, flat=args.flat)
     print("部署完成：新增 %d，升级 %d，已最新 %d"
           % (len(r["new"]), len(r["upgrade"]), len(r["same"])))
     for w in r["warnings"]:
@@ -244,6 +250,7 @@ def build_parser():
     s.add_argument("index")
     s.add_argument("dest")
     s.add_argument("--device-sys", default=DEV_SYS)
+    s.add_argument("--flat", action="store_true")
     s.set_defaults(func=cmd_sys)
 
     e = sub.add_parser("entry", help="生成薄 .hpappdir 入口")
@@ -251,6 +258,7 @@ def build_parser():
     e.add_argument("name")
     e.add_argument("dest")
     e.add_argument("--device-sys", default=DEV_SYS)
+    e.add_argument("--flat", action="store_true")
     e.set_defaults(func=cmd_entry)
 
     b = sub.add_parser("bundle", help="生成自包含 .hpappdir")
@@ -265,6 +273,7 @@ def build_parser():
     i.add_argument("dest")
     i.add_argument("--device-sys", default=DEV_SYS)
     i.add_argument("--layout", choices=("sys", "legacy"), default="sys")
+    i.add_argument("--flat", action="store_true")
     i.set_defaults(func=cmd_install)
 
     d = sub.add_parser("device", help="列出已连接的计算器盘")
@@ -281,6 +290,7 @@ def build_parser():
     dp.add_argument("--dry-run", action="store_true")
     dp.add_argument("--keep-old", action="store_true")
     dp.add_argument("--no-legacy", action="store_true")
+    dp.add_argument("--flat", action="store_true", help="sys/bin/<name>.elf 扁平布局")
     dp.set_defaults(func=cmd_deploy)
 
     h = sub.add_parser("hash", help="生成/打印 hashes.txt")
