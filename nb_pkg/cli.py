@@ -43,7 +43,7 @@ def cmd_verify(args):
         hs, herr = manifest.hashes(m.dir)
         errs += herr
         for rel, want in hs.items():
-            p = os.path.join(m.dir, rel.replace("/", os.sep))
+            p = os.path.join(m.payload_root(), rel.replace("/", os.sep))
             if not os.path.isfile(p):
                 errs.append("%s: hashes.txt 指到不存在的文件 %s" % (m.path, rel))
             elif _sha256(p) != want:
@@ -102,6 +102,10 @@ def cmd_bundle(args):
 
 
 def cmd_install(args):
+    if args.layout == "legacy":
+        n = artifacts.legacy_tree(args.index, os.path.join(args.dest, "pkg"))
+        print("install(legacy): %d package(s) -> %s/pkg" % (n, args.dest))
+        return 0
     n, errs = artifacts.sys_tree(args.index, os.path.join(args.dest, "sys"),
                                  args.device_sys)
     made = 0
@@ -126,7 +130,7 @@ def cmd_hash(args):
             continue
         lines = []
         for n in artifacts.payload_files(m):
-            p = os.path.join(m.dir, n.replace("/", os.sep))
+            p = os.path.join(m.payload_root(), n.replace("/", os.sep))
             if os.path.isfile(p):
                 lines.append("%s  %s" % (_sha256(p), n))
         if not lines:
@@ -199,6 +203,7 @@ def build_parser():
     i.add_argument("index")
     i.add_argument("dest")
     i.add_argument("--device-sys", default=DEV_SYS)
+    i.add_argument("--layout", choices=("sys", "legacy"), default="sys")
     i.set_defaults(func=cmd_install)
 
     h = sub.add_parser("hash", help="生成/打印 hashes.txt")

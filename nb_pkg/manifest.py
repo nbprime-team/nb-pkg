@@ -38,12 +38,31 @@ class Manifest:
     def lib(self):
         return self.get("lib")
 
+    @property
+    def payload_dir(self):
+        return self.get("payload")
+
+    def payload_root(self):
+        if self.payload_dir:
+            return os.path.join(self.dir, self.payload_dir.replace("\\", "/"))
+        return self.dir
+
+    def rel_entry(self):
+        rel = self.lib if self.kind == "lib" else self.entry
+        if not rel:
+            return None
+        rel = rel.replace("\\", "/")
+        pre = (self.payload_dir or "").replace("\\", "/").strip("/")
+        if pre and rel.startswith(pre + "/"):
+            rel = rel[len(pre) + 1:]
+        return rel
+
     def payload_path(self):
         """入口/库文件的本地路径；payload_url 包返回 None。"""
-        rel = self.lib if self.kind == "lib" else self.entry
+        rel = self.rel_entry()
         if not rel or rel == ".":
             return None
-        p = os.path.join(self.dir, rel.replace("\\", "/"))
+        p = os.path.join(self.payload_root(), rel)
         return p if os.path.isfile(p) else None
 
 

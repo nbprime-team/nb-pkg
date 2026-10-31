@@ -10,7 +10,7 @@ SKIP = {"pkg.cfg", "src", "README.md", "hashes.txt", "__pycache__"}
 
 
 def payload_names(m):
-    for n in sorted(os.listdir(m.dir)):
+    for n in sorted(os.listdir(m.payload_root())):
         if n in SKIP:
             continue
         yield n
@@ -19,7 +19,7 @@ def payload_names(m):
 def copy_payload(m, dst):
     os.makedirs(dst, exist_ok=True)
     for n in payload_names(m):
-        s = os.path.join(m.dir, n)
+        s = os.path.join(m.payload_root(), n)
         d = os.path.join(dst, n)
         if os.path.isdir(s):
             shutil.copytree(s, d, dirs_exist_ok=True)
@@ -31,19 +31,21 @@ def _make_main(m, app_dir, elf):
     with open(TEMPLATE, "r", encoding="utf-8") as f:
         text = f.read()
     esc = app_dir.replace("\\", "\\\\")
+    esc_elf = elf.replace("\\", "\\\\")
     text = re.sub(r'APP_DIR\s*=\s*"[^"]*"',
                   lambda _: 'APP_DIR = "%s"' % esc, text, count=1)
     text = re.sub(r'APP_ELF\s*=\s*"[^"]*"',
-                  lambda _: 'APP_ELF = "%s"' % elf, text, count=1)
+                  lambda _: 'APP_ELF = "%s"' % esc_elf, text, count=1)
     return text.replace("[sh]", "[%s]" % m.name)
 
 
 def payload_files(m):
     """递归列出载荷文件（相对包根），排除清单/源码/说明。"""
     out = []
-    for root, dirs, files in os.walk(m.dir):
+    base = m.payload_root()
+    for root, dirs, files in os.walk(base):
         dirs[:] = [d for d in dirs if d not in ("src", "__pycache__")]
-        rel_root = os.path.relpath(root, m.dir)
+        rel_root = os.path.relpath(root, base)
         for f in sorted(files):
             if f in SKIP:
                 continue
@@ -78,17 +80,30 @@ def sys_tree(index, dest, device_sys="C:\\DATA\\sys", only=None):
     return n, errs
 
 
+def legacy_tree(index, dest):
+    """兼容布局：C:\DATA\pkg\<name>-<ver>\（当前 sh 的扫描方式）。"""
+    from . import manifest
+    n = 0
+    for m in manifest.load_all(index):
+        copy_payload(m, os.path.join(dest, "%s-%s" % (m.name, m.version)))
+        shutil.copy2(os.path.join(m.dir, "pkg.cfg"),
+                     os.path.join(dest, "%s-%s" % (m.name, m.version), "pkg.cfg"))
+        n += 1
+    return n
+
+
 def entry(m, dest, device_sys="C:\\DATA\\sys"):
     os.makedirs(dest, exist_ok=True)
     for n in _meta_names(m):
-        s = os.path.join(m.dir, n)
+        s = os.path.join(m.payload_root(), n)
         if os.path.isfile(s):
             shutil.copy2(s, os.path.join(dest, n))
     if m.kind in ("app", "tool"):
         sub = "lib" if m.kind == "lib" else "bin"
         app_dir = "%s\\%s\\%s-%s" % (device_sys, sub, m.name, m.version)
+        rel_elf = (m.rel_entry() or m.entry).replace("/", "\\")
         with open(os.path.join(dest, "main.py"), "w", encoding="utf-8") as f:
-            f.write(_make_main(m, app_dir, os.path.basename(m.entry)))
+            f.write(_make_main(m, app_dir, rel_elf))
     elif m.kind == "pyapp":
         copy_payload(m, dest)
     return dest
@@ -100,5 +115,5 @@ def bundle(m, dest, device_root="C:\\DATA"):
         base = os.path.basename(os.path.normpath(dest))
         with open(os.path.join(dest, "main.py"), "w", encoding="utf-8") as f:
             f.write(_make_main(m, "%s\\%s" % (device_root, base),
-                               os.path.basename(m.entry)))
+                               (m.rel_entry() or m.entry).replace("/", "\\")))
     return dest
