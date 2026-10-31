@@ -39,12 +39,15 @@ python3 -m nb_pkg deploy ../nb-package-index            # 交互选择要装的�
 python3 -m nb_pkg deploy ../nb-package-index hello lua  # 只装指定包
 python3 -m nb_pkg deploy ../nb-package-index --all      # 全部
 python3 -m nb_pkg deploy ../nb-package-index --dry-run  # 只看计划
+
+部署形态**只有一种**：每个应用生成自包含 `.hpappdir`（`main.py` + payload + 元数据/图标）。
+这是真机唯一验证通过的形态——Python 只读自己目录，不跨目录。
 ```
 
 - 自动探测 Windows 盘符、macOS `/Volumes`、Linux `/media|/run/media|/mnt`，以 `DATA/` 目录识别；
 - 先构建到 `DATA/.nb-pkg-staging`，再合并进 `sys/`、入口、`pkg/`，完成后清理；
 - **默认不装任何包**：不带参数会列出包并让你选（回车取消），
-  列表会标出“可显示 / 仅工具”；`--bundles` 生成自包含 `.hpappdir`；
+  列表会标出“可显示 / 仅工具”；
 - 只触碰索引里声明过的名字；`--keep-old` 保留旧版本目录，`--no-legacy` 不写兼容 `pkg/`；
 - 入口里的设备路径固定为 `C:\DATA\...`，与盘符无关。
 

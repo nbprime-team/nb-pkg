@@ -131,7 +131,6 @@ def _selected(index, only, all_):
 
 
 def deploy(index, device, dry_run=False, keep_old=False,
-           with_legacy=True, with_entries=True, flat=False, bundles=False,
            only=None, all_=False):
     """构建到设备上的暂存目录，再合并进 DATA/。返回摘要 dict。"""
     sel = _selected(index, only, all_)
@@ -155,6 +154,33 @@ def deploy(index, device, dry_run=False, keep_old=False,
                "warnings": []}
     if dry_run:
         return summary
+
+    staging = os.path.join(data, STAGING)
+    _rm(staging)
+    os.makedirs(staging)
+    try:
+        n = 0
+        warns = []
+        for m in sel:
+            if m.kind not in ("app", "tool", "pyapp"):
+                continue
+            if not m.payload_path() and not m.get("payload_url"):
+                warns.append("%s: 无本地载荷（payload_url 需先 fetch）" % m.name)
+                continue
+            artifacts.bundle(m, os.path.join(staging, "bundles",
+                                             "%s.hpappdir" % m.name))
+            n += 1
+        summary["warnings"] += warns
+        ent = os.path.join(staging, "bundles")
+        if os.path.isdir(ent):
+            for d in os.listdir(ent):
+                target = os.path.join(data, d)
+                _rm(target)                 # 整包替换，避免残留旧文件
+                shutil.copytree(os.path.join(ent, d), target)
+        summary["installed"] = n
+    finally:
+        _rm(staging)
+    return summary
 
     staging = os.path.join(data, STAGING)
     _rm(staging)

@@ -209,9 +209,7 @@ def cmd_deploy(args):
         for m in same:
             print("  已最新", m.name, m.version)
         return 0
-    r = device.deploy(args.index, dev, keep_old=args.keep_old,
-                      with_legacy=not args.no_legacy, flat=args.flat,
-                      bundles=args.bundles, only=names, all_=args.all)
+    r = device.deploy(args.index, dev, only=names, all_=args.all)
     print("部署完成：新增 %d，升级 %d，已最新 %d"
           % (len(r["new"]), len(r["upgrade"]), len(r["same"])))
     for w in r["warnings"]:
@@ -277,20 +275,7 @@ def build_parser():
     l.add_argument("index")
     l.set_defaults(func=cmd_list)
 
-    s = sub.add_parser("sys", help="把包安装进核心区（含 core.db）")
-    s.add_argument("index")
-    s.add_argument("dest")
-    s.add_argument("--device-sys", default=DEV_SYS)
-    s.add_argument("--flat", action="store_true")
-    s.set_defaults(func=cmd_sys)
 
-    e = sub.add_parser("entry", help="生成薄 .hpappdir 入口")
-    e.add_argument("index")
-    e.add_argument("name")
-    e.add_argument("dest")
-    e.add_argument("--device-sys", default=DEV_SYS)
-    e.add_argument("--flat", action="store_true")
-    e.set_defaults(func=cmd_entry)
 
     b = sub.add_parser("bundle", help="生成自包含 .hpappdir")
     b.add_argument("index")
@@ -299,13 +284,6 @@ def build_parser():
     b.add_argument("--device-root", default=DEV_ROOT)
     b.set_defaults(func=cmd_bundle)
 
-    i = sub.add_parser("install", help="sys + 入口，一次生成")
-    i.add_argument("index")
-    i.add_argument("dest")
-    i.add_argument("--device-sys", default=DEV_SYS)
-    i.add_argument("--layout", choices=("sys", "legacy"), default="sys")
-    i.add_argument("--flat", action="store_true")
-    i.set_defaults(func=cmd_install)
 
     d = sub.add_parser("device", help="列出已连接的计算器盘")
     d.set_defaults(func=cmd_device)
@@ -321,11 +299,7 @@ def build_parser():
     dp.add_argument("--all", action="store_true")
     dp.add_argument("--device")
     dp.add_argument("--dry-run", action="store_true")
-    dp.add_argument("--keep-old", action="store_true")
-    dp.add_argument("--no-legacy", action="store_true")
-    dp.add_argument("--flat", action="store_true", help="sys 根下扁平布局")
-    dp.add_argument("--bundles", action="store_true",
-                    help="每个应用做成自包含 .hpappdir（绕开 Python 跨目录限制）")
+
     dp.set_defaults(func=cmd_deploy)
 
     h = sub.add_parser("hash", help="生成/打印 hashes.txt")
