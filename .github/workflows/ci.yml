@@ -15,5 +15,5 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: verify nb-package-index
         run: |
-          git clone --depth 1 https://github.com/nbprime-team/nb-package-index.git /tmp/index
+          git clone --depth 1 --branch package-format https://github.com/nbprime-team/nb-package-index.git /tmp/index
           python -m nb_pkg verify /tmp/index
