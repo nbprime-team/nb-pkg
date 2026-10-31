@@ -123,7 +123,7 @@ def _rm(path):
 
 
 def deploy(index, device, dry_run=False, keep_old=False,
-           with_legacy=True, with_entries=True, flat=False):
+           with_legacy=True, with_entries=True, flat=False, bundles=False):
     """构建到设备上的暂存目录，再合并进 DATA/。返回摘要 dict。"""
     st = status(device)
     data = st["data"]
@@ -139,6 +139,24 @@ def deploy(index, device, dry_run=False, keep_old=False,
     os.makedirs(staging)
     try:
         # 1) 生成核心区与入口
+        if bundles:
+            n = 0
+            errs = []
+            for m in manifest.load_all(index):
+                if m.kind not in ("app", "tool", "pyapp"):
+                    continue
+                if not m.payload_path() and not m.get("payload_url"):
+                    continue
+                artifacts.bundle(m, os.path.join(staging, "bundles",
+                                                 "%s.hpappdir" % m.name))
+                n += 1
+            summary["warnings"] += errs
+            ent = os.path.join(staging, "bundles")
+            if os.path.isdir(ent):
+                for d in os.listdir(ent):
+                    _copy_merge(os.path.join(ent, d), os.path.join(data, d))
+            summary["installed"] = n
+            return summary
         if flat:
             n = artifacts.sys_flat(index, os.path.join(staging, "sys"))
             errs = []

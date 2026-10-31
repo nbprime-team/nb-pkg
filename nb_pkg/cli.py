@@ -180,7 +180,8 @@ def cmd_deploy(args):
             print("  已最新", m.name, m.version)
         return 0
     r = device.deploy(args.index, dev, keep_old=args.keep_old,
-                      with_legacy=not args.no_legacy, flat=args.flat)
+                      with_legacy=not args.no_legacy, flat=args.flat,
+                      bundles=args.bundles)
     print("部署完成：新增 %d，升级 %d，已最新 %d"
           % (len(r["new"]), len(r["upgrade"]), len(r["same"])))
     for w in r["warnings"]:
@@ -290,7 +291,9 @@ def build_parser():
     dp.add_argument("--dry-run", action="store_true")
     dp.add_argument("--keep-old", action="store_true")
     dp.add_argument("--no-legacy", action="store_true")
-    dp.add_argument("--flat", action="store_true", help="sys/bin/<name>.elf 扁平布局")
+    dp.add_argument("--flat", action="store_true", help="sys 根下扁平布局")
+    dp.add_argument("--bundles", action="store_true",
+                    help="每个应用做成自包含 .hpappdir（绕开 Python 跨目录限制）")
     dp.set_defaults(func=cmd_deploy)
 
     h = sub.add_parser("hash", help="生成/打印 hashes.txt")
