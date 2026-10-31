@@ -144,6 +144,9 @@ def entry(m, dest, device_sys="C:\\DATA\\sys", flat=False):
 
 def bundle(m, dest, device_root="C:\\DATA"):
     copy_payload(m, dest)
+    with open(os.path.join(dest, "nb-pkg.txt"), "w", encoding="utf-8") as f:
+        f.write("name = %s\nversion = %s\nkind = %s\n"
+                % (m.name, m.version, m.kind))
     if m.kind in ("app", "tool"):
         base = os.path.basename(os.path.normpath(dest))
         with open(os.path.join(dest, "main.py"), "w", encoding="utf-8") as f:

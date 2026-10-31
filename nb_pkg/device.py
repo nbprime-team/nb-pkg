@@ -82,6 +82,18 @@ def status(device):
                 if len(parts) == 4:
                     installed[(parts[0], parts[1])] = parts[2]
     entries = sorted(e for e in os.listdir(data) if e.lower().endswith(".hpappdir"))
+    for e in entries:
+        meta = os.path.join(data, e, "nb-pkg.txt")
+        if not os.path.isfile(meta):
+            continue
+        info = {}
+        with open(meta, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    info[k.strip()] = v.strip()
+        if info.get("name") and info.get("version"):
+            installed[(info["name"], info["version"])] = info.get("kind", "app")
     try:
         free = shutil.disk_usage(root).free
     except OSError:
