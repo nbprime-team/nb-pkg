@@ -22,6 +22,7 @@ python3 -m nb_pkg list    ../nb-package-index
 python3 -m nb_pkg install ../nb-package-index out      # out/sys + out/entries/
 python3 -m nb_pkg bundle  ../nb-package-index hello out/hello.hpappdir
 python3 -m nb_pkg fetch   ../nb-package-index tcc out  # 取 payload_url
+python3 -m nb_pkg hash    ../nb-package-index --write  # 生成 hashes.txt（发布前）
 ```
 
 生成的路径默认是设备视角（`C:\DATA\sys`、`C:\DATA\<name>.hpappdir`），

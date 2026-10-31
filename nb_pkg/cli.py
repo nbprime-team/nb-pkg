@@ -117,6 +117,33 @@ def cmd_install(args):
     return 1 if errs else 0
 
 
+def cmd_hash(args):
+    """为每个包生成/打印 hashes.txt（发布前跑一次，CI 会强制校验）。"""
+    from . import artifacts
+    made = 0
+    for m in manifest.load_all(args.index):
+        if not m.payload_path():
+            continue
+        lines = []
+        for n in artifacts.payload_names(m):
+            p = os.path.join(m.dir, n)
+            if os.path.isfile(p):
+                lines.append("%s  %s" % (_sha256(p), n))
+        if not lines:
+            continue
+        text = "\n".join(lines) + "\n"
+        if args.write:
+            with open(os.path.join(m.dir, "hashes.txt"), "w", encoding="utf-8") as f:
+                f.write(text)
+            made += 1
+        else:
+            print("# %s-%s" % (m.name, m.version))
+            print(text, end="")
+    if args.write:
+        print("wrote hashes.txt for %d package(s)" % made)
+    return 0
+
+
 def cmd_fetch(args):
     m = _find(args.index, args.name)
     if not m or not m.get("payload_url"):
@@ -173,6 +200,11 @@ def build_parser():
     i.add_argument("dest")
     i.add_argument("--device-sys", default=DEV_SYS)
     i.set_defaults(func=cmd_install)
+
+    h = sub.add_parser("hash", help="生成/打印 hashes.txt")
+    h.add_argument("index")
+    h.add_argument("--write", action="store_true")
+    h.set_defaults(func=cmd_hash)
 
     f = sub.add_parser("fetch", help="下载 payload_url")
     f.add_argument("index")
