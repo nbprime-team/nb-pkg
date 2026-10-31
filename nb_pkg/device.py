@@ -150,7 +150,7 @@ def deploy(index, device, dry_run=False, keep_old=False,
         summary["warnings"] += errs
         if with_entries:
             for m in manifest.load_all(index):
-                if m.kind in ("app", "tool"):
+                if m.kind in ("app", "tool", "pyapp"):
                     if not m.payload_path() and not m.get("payload_url"):
                         continue
                     artifacts.entry(m, os.path.join(

@@ -88,6 +88,8 @@ def sys_flat(index, dest):
     from . import manifest
     n = 0
     for m in manifest.load_all(index):
+        if m.kind == "pyapp":
+            continue
         rel = m.rel_entry()
         if not rel:
             continue
