@@ -38,6 +38,20 @@ def _make_main(m, app_dir, elf):
     return text.replace("[sh]", "[%s]" % m.name)
 
 
+def payload_files(m):
+    """递归列出载荷文件（相对包根），排除清单/源码/说明。"""
+    out = []
+    for root, dirs, files in os.walk(m.dir):
+        dirs[:] = [d for d in dirs if d not in ("src", "__pycache__")]
+        rel_root = os.path.relpath(root, m.dir)
+        for f in sorted(files):
+            if f in SKIP:
+                continue
+            rel = f if rel_root == "." else os.path.join(rel_root, f)
+            out.append(rel.replace(os.sep, "/"))
+    return sorted(out)
+
+
 def _meta_names(m):
     return [n for n in payload_names(m)
             if n.endswith((".hpapp", ".hpappnote", ".hpappprgm", ".png"))]

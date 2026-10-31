@@ -125,8 +125,8 @@ def cmd_hash(args):
         if not m.payload_path():
             continue
         lines = []
-        for n in artifacts.payload_names(m):
-            p = os.path.join(m.dir, n)
+        for n in artifacts.payload_files(m):
+            p = os.path.join(m.dir, n.replace("/", os.sep))
             if os.path.isfile(p):
                 lines.append("%s  %s" % (_sha256(p), n))
         if not lines:
