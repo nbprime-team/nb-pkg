@@ -174,6 +174,14 @@ def deploy(index, device, dry_run=False, keep_old=False,
         n = 0
         warns = []
         for m in sel:
+            if m.kind == "upsilon":
+                apps = os.path.join(os.path.dirname(data.rstrip("/\\")), "apps")
+                os.makedirs(apps, exist_ok=True)
+                src = os.path.join(m.payload_root(), (m.rel_entry() or "").replace("/", os.sep))
+                if os.path.isfile(src):
+                    shutil.copy2(src, os.path.join(apps, os.path.basename(src)))
+                    n += 1
+                continue
             if m.kind not in ("app", "tool", "pyapp"):
                 continue
             if not m.payload_path() and not m.get("payload_url"):
