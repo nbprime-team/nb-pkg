@@ -3,7 +3,7 @@
 import os
 import re
 
-KINDS = ("app", "tool", "lib", "pyapp")
+KINDS = ("app", "tool", "lib", "pyapp", "upsilon")
 ABIS = ("shell", "hpconfig", "plua", "upsilon")
 VER_RE = re.compile(r"^\d+\.\d+$")
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
