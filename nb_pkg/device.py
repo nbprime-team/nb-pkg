@@ -180,7 +180,7 @@ def deploy(index, device, dry_run=False, keep_old=False,
                 warns.append("%s: 无本地载荷（payload_url 需先 fetch）" % m.name)
                 continue
             artifacts.bundle(m, os.path.join(staging, "bundles",
-                                             "%s.hpappdir" % m.name))
+                                             "%s.hpappdir" % (m.get("dir") or m.name)))
             n += 1
         summary["warnings"] += warns
         ent = os.path.join(staging, "bundles")
